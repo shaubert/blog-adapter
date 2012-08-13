@@ -1,4 +1,4 @@
-blog-adapter
+Blog Adapter
 ============
 
 Anroid helper library to adapt blogs.
