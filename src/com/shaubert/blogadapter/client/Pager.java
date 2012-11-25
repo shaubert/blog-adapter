@@ -1,6 +1,7 @@
 package com.shaubert.blogadapter.client;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 
@@ -35,8 +36,18 @@ public class Pager<T> {
     public List<T> loadNext() throws IOException {
         if (hasNext()) {
             DataLoaderRequest request = result == null ? initialRequest : result.getNextDataRequest();
-            result = parser.parse(request, loader.load(request));
-            return result.getResult();
+            InputStream stream = loader.load(request);
+            try {
+            	result = parser.parse(request, stream);
+            	return result.getResult();
+            } finally {
+            	if (stream != null) {
+            		try {
+            			stream.close();
+            		} catch (IOException ex) {
+            		}
+            	}
+            }
         } else {
             return Collections.emptyList();
         }
