@@ -13,8 +13,7 @@ public class HttpDataLoader implements DataLoader {
     
     @Override
     public InputStream load(DataLoaderRequest request) throws IOException {
-        HttpDataLoaderRequest httpRequest = (HttpDataLoaderRequest)request;
-        return httpGateway.loadData(httpRequest.getUrl());
+        return httpGateway.loadData((HttpDataLoaderRequest)request);
     }
 
 }

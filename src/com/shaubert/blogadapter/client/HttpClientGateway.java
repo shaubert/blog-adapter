@@ -1,8 +1,13 @@
 package com.shaubert.blogadapter.client;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
+
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpException;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
@@ -11,11 +16,13 @@ import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
+import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.HttpEntityWrapper;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
@@ -23,10 +30,6 @@ import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HttpContext;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.zip.GZIPInputStream;
 
 public class HttpClientGateway implements HttpGateway {
 
@@ -107,8 +110,25 @@ public class HttpClientGateway implements HttpGateway {
     }
 
     @Override
-    public InputStream loadData(String url) throws IOException {
-        HttpUriRequest request = new HttpGet(url);
+    public InputStream loadData(HttpDataLoaderRequest requestParams) throws IOException {
+        HttpUriRequest request = null;
+        switch (requestParams.getHttpMethod()) {
+        case GET:
+        	request = new HttpGet(requestParams.getUrl());
+        	break;
+        case POST:
+        	request = new HttpPost(requestParams.getUrl());
+        	break;
+        }
+        
+        if (requestParams.getEntity() != null) {
+        	ByteArrayEntity entity = new ByteArrayEntity(requestParams.getEntity());
+        	((HttpEntityEnclosingRequest) request).setEntity(entity);
+        	if (requestParams.getEntityMineType() != null) {
+        		request.addHeader("Content-Type", requestParams.getEntityMineType());
+        	}
+        }
+        
         HttpResponse response = httpClient.execute(request);
         int statusCode = response.getStatusLine().getStatusCode();
         if (statusCode == 200) {

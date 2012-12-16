@@ -4,9 +4,9 @@ import com.shaubert.blogadapter.domain.Post;
 
 public class Blog {
 
-    private DataLoader dataLoader;
-    private RequestProvider requestProvider;
-    private final ParserFactory parserFactory;
+    protected DataLoader dataLoader;
+    protected RequestProvider requestProvider;
+    protected final ParserFactory parserFactory;
     
     public Blog(DataLoader dataLoader, ParserFactory parserFactory, RequestProvider requestProvider) {
         this.dataLoader = dataLoader;
