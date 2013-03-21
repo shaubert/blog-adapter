@@ -18,7 +18,15 @@ public class Pager<T> {
         this.parser = parser;
         this.initialRequest = initialRequest;
     }
-    
+
+    public Parser getParser() {
+        return parser;
+    }
+
+    public DataLoaderRequest getInitialRequest() {
+        return initialRequest;
+    }
+
     public Pager(DataLoader loader, Parser parser, PagerDataParserResult<T> prevResult) {
         this.loader = loader;
         this.parser = parser;

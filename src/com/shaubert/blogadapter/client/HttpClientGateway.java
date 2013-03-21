@@ -1,35 +1,32 @@
 package com.shaubert.blogadapter.client;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.zip.GZIPInputStream;
-
-import org.apache.http.Header;
-import org.apache.http.HeaderElement;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpEntityEnclosingRequest;
-import org.apache.http.HttpException;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpRequestInterceptor;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpResponseInterceptor;
-import org.apache.http.HttpVersion;
+import org.apache.http.*;
+import org.apache.http.client.CookieStore;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.protocol.ClientContext;
 import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.HttpEntityWrapper;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.params.HttpProtocolParams;
+import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 public class HttpClientGateway implements HttpGateway {
 
@@ -124,12 +121,28 @@ public class HttpClientGateway implements HttpGateway {
         if (requestParams.getEntity() != null) {
         	ByteArrayEntity entity = new ByteArrayEntity(requestParams.getEntity());
         	((HttpEntityEnclosingRequest) request).setEntity(entity);
-        	if (requestParams.getEntityMineType() != null) {
-        		request.addHeader("Content-Type", requestParams.getEntityMineType());
+        	if (requestParams.getEntityMimeType() != null) {
+        		request.addHeader("Content-Type", requestParams.getEntityMimeType());
         	}
         }
-        
-        HttpResponse response = httpClient.execute(request);
+
+        for (Map.Entry<String, String> header : requestParams.getHeaders().entrySet()) {
+            request.addHeader(header.getKey(), header.getValue());
+        }
+
+        final HttpResponse response;
+        if (requestParams.getCookies().isEmpty()) {
+            response = httpClient.execute(request);
+        } else {
+            CookieStore cookieStore = new BasicCookieStore();
+            for (Cookie cookie : requestParams.getCookies()) {
+                cookieStore.addCookie(cookie);
+            }
+            HttpContext localContext = new BasicHttpContext();
+            localContext.setAttribute(ClientContext.COOKIE_STORE, cookieStore);
+
+            response = httpClient.execute(request, localContext);
+        }
         int statusCode = response.getStatusLine().getStatusCode();
         if (statusCode == 200) {
             return response.getEntity().getContent();
