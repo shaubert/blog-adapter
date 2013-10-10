@@ -6,5 +6,5 @@ import java.io.InputStream;
 public interface HttpGateway {
    
     InputStream loadData(HttpDataLoaderRequest request) throws IOException;
-    
+
 }

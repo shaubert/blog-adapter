@@ -30,6 +30,32 @@ import java.util.zip.GZIPInputStream;
 
 public class HttpClientGateway implements HttpGateway {
 
+    public class HttpClientGatewayException extends IOException {
+
+        private final int statusCode;
+
+        public HttpClientGatewayException(int statusCode) {
+            this((String) null, statusCode);
+        }
+
+        public HttpClientGatewayException(String detailMessage, int statusCode) {
+            this(detailMessage, null, statusCode);
+        }
+
+        public HttpClientGatewayException(Throwable cause, int statusCode) {
+            this(null, cause, statusCode);
+        }
+
+        public HttpClientGatewayException(String message, Throwable cause, int statusCode) {
+            super(message, cause);
+            this.statusCode = statusCode;
+        }
+
+        public int getStatusCode() {
+            return statusCode;
+        }
+    }
+
     public static class GzipDecompressingEntity extends HttpEntityWrapper {
 
         public GzipDecompressingEntity(final HttpEntity entity) {
@@ -55,11 +81,13 @@ public class HttpClientGateway implements HttpGateway {
     }
     
     private HttpClient httpClient;
-    
-    public HttpClientGateway() {
+    private CookieStore cookieStore;
+
+    public HttpClientGateway(CookieStore cookieStore) {
+        this.cookieStore = cookieStore;
         this.httpClient = createClient();
     }
-    
+
     protected HttpClient createClient() {
         HttpParams params = new BasicHttpParams();
         HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
@@ -93,8 +121,8 @@ public class HttpClientGateway implements HttpGateway {
                 Header ceheader = entity.getContentEncoding();
                 if (ceheader != null) {
                     HeaderElement[] codecs = ceheader.getElements();
-                    for (int i = 0; i < codecs.length; i++) {
-                        if (codecs[i].getName().equalsIgnoreCase("gzip")) {
+                    for (HeaderElement codec : codecs) {
+                        if (codec.getName().equalsIgnoreCase("gzip")) {
                             response.setEntity(new GzipDecompressingEntity(response.getEntity()));
                             return;
                         }
@@ -131,24 +159,20 @@ public class HttpClientGateway implements HttpGateway {
         }
 
         final HttpResponse response;
-        if (requestParams.getCookies().isEmpty()) {
-            response = httpClient.execute(request);
-        } else {
-            CookieStore cookieStore = new BasicCookieStore();
-            for (Cookie cookie : requestParams.getCookies()) {
-                cookieStore.addCookie(cookie);
-            }
-            HttpContext localContext = new BasicHttpContext();
-            localContext.setAttribute(ClientContext.COOKIE_STORE, cookieStore);
-
-            response = httpClient.execute(request, localContext);
+        CookieStore requestCookieStore = cookieStore == null ? new BasicCookieStore() : cookieStore;
+        for (Cookie cookie : requestParams.getCookies()) {
+            requestCookieStore.addCookie(cookie);
         }
+        HttpContext localContext = new BasicHttpContext();
+        localContext.setAttribute(ClientContext.COOKIE_STORE, requestCookieStore);
+        response = httpClient.execute(request, localContext);
+
         int statusCode = response.getStatusLine().getStatusCode();
         if (statusCode == 200) {
             return response.getEntity().getContent();
         } else {
-            throw new IOException("Bad status code = " + statusCode);
+            throw new HttpClientGatewayException("Bad status code = " + statusCode, statusCode);
         }
     }
-    
+
 }

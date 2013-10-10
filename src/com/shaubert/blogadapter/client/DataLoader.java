@@ -5,6 +5,6 @@ import java.io.InputStream;
 
 public interface DataLoader {
     
-     InputStream load(DataLoaderRequest request) throws IOException;
-    
+    InputStream load(DataLoaderRequest request) throws IOException;
+
 }
