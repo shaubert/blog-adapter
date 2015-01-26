@@ -25,6 +25,8 @@ import org.apache.http.protocol.HttpContext;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.net.URI;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
@@ -137,15 +139,34 @@ public class HttpClientGateway implements HttpGateway {
     @Override
     public InputStream loadData(HttpDataLoaderRequest requestParams) throws IOException {
         HttpUriRequest request = null;
+        String url = requestParams.getUrl();
         switch (requestParams.getHttpMethod()) {
         case GET:
-        	request = new HttpGet(requestParams.getUrl());
+        	request = new HttpGet(url);
         	break;
         case POST:
-        	request = new HttpPost(requestParams.getUrl());
+        	request = new HttpPost(url);
         	break;
         }
-        
+
+        URI requestURI = request.getURI();
+        if (requestURI.getHost() == null) {
+            int schemeStart = url.indexOf("//");
+            if (schemeStart >= 0) {
+                int schemeEnd =  url.indexOf("/", schemeStart + 2);
+                if (schemeEnd > 0) {
+                    String host = url.substring(schemeStart + 2, schemeEnd);
+                    try {
+                        Field hostField = URI.class.getDeclaredField("host");
+                        hostField.setAccessible(true);
+                        hostField.set(requestURI, host);
+                    } catch (NoSuchFieldException ignored) {
+                    } catch (IllegalAccessException ignored) {
+                    }
+                }
+            }
+        }
+
         if (requestParams.getEntity() != null) {
         	ByteArrayEntity entity = new ByteArrayEntity(requestParams.getEntity());
         	((HttpEntityEnclosingRequest) request).setEntity(entity);
